@@ -26,12 +26,14 @@ const blankConstructor = (deployedBytecodeSize: number) =>
   "f3"; //RETURN
 
 async function main() {
-  let factoryNonce = 0;
 
   const [deployer] = await ethers.getSigners();
   const factory = await (await (await ethers.getContractFactory("TestFactory")).deploy()).deployed();
 
-  async function test(deployedBytecode: string) {
+  let factoryNonce = 1;
+  let deployerNonce = await deployer.getTransactionCount();
+
+  async function test(deployedBytecode: string, fix: boolean) {
     const size = deployedBytecode.length/2;
     const dummyBytecode = blankConstructor(size) + deployedBytecode;
 
@@ -39,9 +41,11 @@ async function main() {
       console.log("> Normal deployment:");
       await deployer.sendTransaction({data: dummyBytecode});
       console.log("\tsuccess");
-      const actual = await ethers.provider.getCode(ethers.utils.getContractAddress(
-        {from: deployer.address, nonce: await deployer.getTransactionCount() - 1}
-      ));
+      const expectedAddress = ethers.utils.getContractAddress({from: deployer.address, nonce: deployerNonce});
+      ++deployerNonce;
+      const actual = await ethers.provider.getCode(expectedAddress);
+      // console.log(expectedAddress);
+      // console.log(actual);
       console.log("\tdeployed bytecode matches:", actual === "0x"+deployedBytecode);
     }
     catch (error) {
@@ -50,11 +54,14 @@ async function main() {
   
     try {
       console.log("> TestFactory.create:");
-      await factory.create(dummyBytecode);
+      await factory.create(dummyBytecode, fix ? {gasLimit: 4000000} : {});
       console.log("\tsuccess");
-      const actual = await ethers.provider.getCode(ethers.utils.getContractAddress(
-        {from: factory.address, nonce: ++factoryNonce}
-      ));
+      const expectedAddress = ethers.utils.getContractAddress({from: factory.address, nonce: factoryNonce});
+      ++factoryNonce;
+      ++deployerNonce;
+      const actual = await ethers.provider.getCode(expectedAddress);
+      // console.log(expectedAddress);
+      // console.log(actual);
       console.log("\tdeployed bytecode matches:", actual === "0x"+deployedBytecode);
     }
     catch (error) {
@@ -66,18 +73,23 @@ async function main() {
 
   console.log("-----------------------------------------");
   console.log(">>>> See it work:");
-  await test("ff".repeat(CRITICAL_SIZE));
+  await test("ff".repeat(CRITICAL_SIZE), false);
 
   console.log("----------------");
 
   console.log(">>>> See it fail:");
-  await test("ff".repeat(CRITICAL_SIZE+1));
+  await test("ff".repeat(CRITICAL_SIZE+1), false);
 
   console.log("----------------");
 
   console.log(">>>> See it work for a larger contract that");
   console.log("     contains bytes that are 0 in its deploy code:")
-  await test("ff00".repeat((CRITICAL_SIZE+1)/2 + 1000));
+  await test("ff00".repeat((CRITICAL_SIZE+1)/2 + 1000), false);
+
+  console.log("----------------");
+
+  console.log(">>>> See it fixed:");
+  await test("ff".repeat(CRITICAL_SIZE+1), true);
   console.log("-----------------------------------------");
 }
 

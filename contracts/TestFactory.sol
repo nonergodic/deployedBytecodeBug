@@ -6,10 +6,13 @@ contract TestFactory {
 
   function create(bytes memory code) external returns (address) {
     address ct;
+    bool failed;
     assembly /*("memory-safe")*/
     {
       ct := create(0, add(code, 32), mload(code))
+      failed := iszero(extcodesize(ct))
     }
+    require(!failed, "create failed");
     return ct;
   }
 
@@ -22,7 +25,7 @@ contract TestFactory {
       ct := create2(0, add(code, 32), mload(code), salt)
       failed := iszero(extcodesize(ct))
     }
-    require(!failed, "Contract already exists");
+    require(!failed, "Contract already exists or constructor reverted");
     return ct;
   }
 }
