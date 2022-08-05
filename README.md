@@ -1,4 +1,4 @@
-# Demonstrate bug in Hardhat network (presumably ethereumjs/vm)
+# Demonstrate bug in Hardhat network
 
 To reproduce:
 
