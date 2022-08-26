@@ -39,7 +39,7 @@ async function main() {
 
     try {
       console.log("> Normal deployment:");
-      await deployer.sendTransaction({data: dummyBytecode});
+      await (await deployer.sendTransaction({data: dummyBytecode})).wait();
       console.log("\tsuccess");
       const expectedAddress = ethers.utils.getContractAddress({from: deployer.address, nonce: deployerNonce});
       ++deployerNonce;
@@ -54,7 +54,7 @@ async function main() {
   
     try {
       console.log("> TestFactory.create:");
-      await factory.create(dummyBytecode, fix ? {gasLimit: 4000000} : {});
+      await (await factory.create(dummyBytecode, fix ? {gasLimit: 4000000} : {})).wait();
       console.log("\tsuccess");
       const expectedAddress = ethers.utils.getContractAddress({from: factory.address, nonce: factoryNonce});
       ++factoryNonce;
